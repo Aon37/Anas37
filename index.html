@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>مخزن أنس</title>
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--text:#e5e7eb;--accent:#22c55e}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:1100px;margin:auto;padding:24px}
+    h1{margin:0 0 16px;font-size:28px}
+    p{margin:0 0 16px;opacity:.9}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .card{background:var(--card);padding:18px;border-radius:16px;text-decoration:none;color:inherit;border:1px solid rgba(255,255,255,.06)}
+    .card:hover{outline:2px solid var(--accent)}
+    .title{font-weight:700;margin-bottom:6px}
+    .hint{font-size:12px;opacity:.7}
+    .footer{margin-top:18px;font-size:12px;opacity:.6}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>مخزن أنس</h1>
+    <p>كل ملفاتي منظمة حسب فئات: شروحات، تطبيقات، صوتيات، صور، مواقع ويب، كتب PDF، أدوات الحاسوب، تطبيقات الجوال، وأخرى.</p>
+
+    <div class="grid">
+      <a class="card" href="tutorials/index.html"><div class="title">الشروحات</div><div class="hint">صور وخطوات ودروس</div></a>
+      <a class="card" href="apps/index.html"><div class="title">التطبيقات</div><div class="hint">ملفات تثبيت وروابط</div></a>
+      <a class="card" href="audio/index.html"><div class="title">الصوتيات</div><div class="hint">ملفات MP3</div></a>
+      <a class="card" href="images/index.html"><div class="title">الصور</div><div class="hint">معرض صور وسكرينشوت</div></a>
+      <a class="card" href="websites/index.html"><div class="title">مواقع الويب</div><div class="hint">روابط مفيدة</div></a>
+      <a class="card" href="books/index.html"><div class="title">الكتب PDF</div><div class="hint">كتب وأدلة</div></a>
+      <a class="card" href="pc-tools/index.html"><div class="title">أدوات الحاسوب</div><div class="hint">برامج وأدوات</div></a>
+      <a class="card" href="mobile-tools/index.html"><div class="title">تطبيقات الجوال</div><div class="hint">APK وروابط المتجر</div></a>
+      <a class="card" href="other/index.html"><div class="title">أخرى</div><div class="hint">أي ملفات متنوعة</div></a>
+    </div>
+
+    <p class="footer">© أنس — هذا الموقع مستضاف مجانًا على GitHub Pages</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>لوحة إدارة مخزن أنس</title>
+<style>
+  body{font-family:system-ui;max-width:900px;margin:0 auto;padding:24px;line-height:1.8;background:#0f172a;color:#e5e7eb}
+  h1{margin-top:0} input,select,textarea,button{width:100%;padding:10px;margin:6px 0;border-radius:10px;border:1px solid #334155;background:#111827;color:#e5e7eb}
+  button{cursor:pointer;font-weight:700} .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:#111827;border-radius:16px;padding:16px;border:1px solid #223}
+  .ok{color:#16a34a} .err{color:#f43f5e} .muted{opacity:.75;font-size:12px}
+</style>
+</head>
+<body>
+  <h1>لوحة إدارة مخزن أنس</h1>
+
+  <div class="card">
+    <h3>١) إعداد الدخول (مرة وحدة)</h3>
+    <div class="row">
+      <div>
+        <label>اسم المالك (owner)</label>
+        <input id="owner" value="Aon37">
+      </div>
+      <div>
+        <label>اسم المستودع (repo)</label>
+        <input id="repo" value="Anas37">
+      </div>
+    </div>
+    <label>GitHub Personal Access Token (صلاحية: Contents - Read & Write على هذا الريبو فقط)</label>
+    <input id="token" type="password" placeholder="الصق المفتاح هنا">
+    <button onclick="saveToken()">حفظ في المتصفح</button>
+    <div class="muted">المفتاح يبقى فقط بمتصفحك (localStorage). إذا ضاع جهازك، احذف التوكن من GitHub وانشئ غيره.</div>
+  </div>
+
+  <div class="card">
+    <h3>٢) نشر صفحة جديدة</h3>
+    <label>القسم</label>
+    <select id="section">
+      <option value="tutorials">الشروحات</option>
+      <option value="apps">التطبيقات</option>
+      <option value="audio">الصوتيات</option>
+      <option value="images">الصور</option>
+      <option value="websites">مواقع الويب</option>
+      <option value="books">الكتب PDF</option>
+      <option value="pc-tools">أدوات الحاسوب</option>
+      <option value="mobile-tools">تطبيقات الجوال</option>
+      <option value="other">أخرى</option>
+    </select>
+
+    <label>عنوان الصفحة</label>
+    <input id="title" placeholder="مثال: شرح برنامج X">
+
+    <label>المحتوى (نص حر؛ تقدر تلصق روابط وصور)</label>
+    <textarea id="body" rows="8" placeholder="اكتب الشرح هنا..."></textarea>
+
+    <button onclick="publishPage()">نشر الصفحة</button>
+  </div>
+
+  <div class="card">
+    <h3>٣) رفع ملفات (صور / PDF / MP3 / MP4) إلى مجلد _assets</h3>
+    <input id="files" type="file" multiple>
+    <button onclick="uploadFiles()">رفع الملفات</button>
+    <div class="muted">بعد الرفع، انسخ الروابط وضعها داخل الشرح.</div>
+  </div>
+
+  <pre id="log" style="white-space:pre-wrap"></pre>
+
+<script>
+const branch = 'main';
+const log = (msg, cls='') => {
+  const el = document.getElementById('log');
+  el.innerHTML += (cls? `<span class="${cls}">${msg}</span>` : msg) + '\n';
+};
+
+function saveToken(){
+  localStorage.setItem('gh_owner', document.getElementById('owner').value.trim());
+  localStorage.setItem('gh_repo',  document.getElementById('repo').value.trim());
+  localStorage.setItem('gh_token', document.getElementById('token').value.trim());
+  log('تم حفظ الإعدادات محليًا ✅','ok');
+}
+
+(function loadSaved(){
+  const o=localStorage.getItem('gh_owner'), r=localStorage.getItem('gh_repo');
+  if(o) document.getElementById('owner').value = o;
+  if(r) document.getElementById('repo').value = r;
+})();
+
+function getCfg(){
+  const owner = document.getElementById('owner').value.trim();
+  const repo  = document.getElementById('repo').value.trim();
+  const token = (document.getElementById('token').value || localStorage.getItem('gh_token') || '').trim();
+  if(!owner || !repo || !token){ throw new Error('أكمل الحقول (owner/repo/token)'); }
+  return {owner, repo, token};
+}
+
+async function githubGET(path){
+  const {owner, repo, token} = getCfg();
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  const res = await fetch(url,{headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json'}});
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error('GET فشل: '+res.status);
+  return await res.json();
+}
+
+async function putFile(path, contentBase64, message){
+  const {owner, repo, token} = getCfg();
+  let sha = null;
+  const exists = await githubGET(path);
+  if(exists && exists.sha) sha = exists.sha;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const body = { message, content: contentBase64, branch };
+  if(sha) body.sha = sha;
+
+  const res = await fetch(url,{
+    method:'PUT',
+    headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json'},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error('PUT فشل: '+res.status+' '+t);
+  }
+  return await res.json();
+}
+
+function b64FromText(txt){ return btoa(unescape(encodeURIComponent(txt))); }
+function b64FromArrayBuffer(buf){
+  let binary = ''; const bytes = new Uint8Array(buf);
+  for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+function slugify(s){
+  return s.trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu,'')
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-');
+}
+function pageTemplate(title, bodyHtml){
+  const now = new Date().toLocaleString('ar-EG');
+  return `<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${title} — مخزن أنس</title>
+<style>body{font-family:system-ui;max-width:900px;margin:0 auto;padding:24px;line-height:1.9}a{color:#16a34a}.meta{opacity:.7;font-size:13px;margin:8px 0 16px}</style>
+</head>
+<body>
+  <p><a href="../index.html">⬅︎ رجوع للقسم</a></p>
+  <h1>${title}</h1>
+  <div class="meta">نُشر بتاريخ: ${now}</div>
+  <div>${bodyHtml}</div>
+</body>
+</html>`;
+}
+
+async function publishPage(){
+  try{
+    const section = document.getElementById('section').value;
+    const title = document.getElementById('title').value.trim();
+    const body  = document.getElementById('body').value.trim();
+    if(!title || !body){ throw new Error('اكتب العنوان والمحتوى'); }
+
+    const slug = slugify(title) || ('post-'+Date.now());
+    const html = pageTemplate(title, body.replace(/\n/g,'<br>'));
+    const path = `${section}/${slug}.html`;
+    await putFile(path, b64FromText(html), `Add page: ${title}`);
+    log(`✅ تم نشر الصفحة: ${path} (تقدر تفتحها بعد دقيقة)`, 'ok');
+    log(`رابط تقريبي: ./${path}`);
+  }catch(e){ log('❌ '+e.message,'err'); }
+}
+
+async function uploadFiles(){
+  try{
+    const files = document.getElementById('files').files;
+    if(!files.length) throw new Error('اختر ملفات');
+    for(const file of files){
+      const arr = await file.arrayBuffer();
+      await putFile(`_assets/${file.name}`, b64FromArrayBuffer(arr), `Upload asset: ${file.name}`);
+      log(`✅ تم رفع: _assets/${file.name} — رابط: ../_assets/${file.name}`,'ok');
+    }
+  }catch(e){ log('❌ '+e.message,'err'); }
+}
+</script>
+</body>
+</html>
